@@ -1,20 +1,25 @@
-#   Copyright 2011 Burke Software and Consulting LLC
-#   Author David M Burke <david@burkesoftware.com>
-#   
-# This file is part of django_admin_export.
+# Copyright (c) 2011, Burke Software and Consulting LLC
+# All rights reserved.
 #
-# django_admin_export is free software: you can redistribute it and/or modify it 
-# under theterms of the GNU General Public License as published by the Free 
-# Software Foundation, either version 3 of the License, or (at your option) any 
-# later version.
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
 #
-# django_admin_export is distributed in the hope that it will be useful, but 
-# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or 
-# FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more
-# details.
-#
-# You should have received a copy of the GNU General Public License along with
-# django_admin_export. If not, see http://www.gnu.org/licenses/.
+# Redistributions of source code must retain the above copyright notice, this
+# list of conditions and the following disclaimer.
+# Redistributions in binary form must reproduce the above copyright notice,
+# this list of conditions and the following disclaimer in the documentation
+# and/or other materials provided with the distribution.
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
+# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN 
+# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
+# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+# POSSIBILITY OF SUCH DAMAGE.
 
 from django.contrib.contenttypes.models import ContentType
 from django.http import HttpResponse, HttpResponseRedirect
@@ -50,8 +55,20 @@ def get_fields_for_model(request):
         'model_name': model_class._meta.verbose_name,
         'model': model._meta.app_label + ":" + model._meta.module_name,
         'fields': model_fields,
+        'many_to_many': model._meta.many_to_many,
         'previous_fields': previous_fields,
     }, RequestContext(request, {}),)
+
+def write_to_xls(worksheet, data, row_to_insert_data, ci, is_m2m):
+    """ Write data in exactly one cell. For m2m comma seperate it """
+    if str(data.__class__) == "<class 'django.db.models.fields.related.ManyRelatedManager'>":
+        # Iterate through each m2m object and concatinate them together seperated by a comma
+        m2m_data = ""
+        for m2m in data.all():
+            m2m_data += unicode(m2m) + ","
+        data = m2m_data[:-1]
+    if not is_m2m:
+        worksheet.write(row_to_insert_data, ci, unicode(data))
 
 def admin_export_xls(request):
     model_class = ContentType.objects.get(id=request.GET['ct']).model_class()
@@ -94,16 +111,30 @@ def admin_export_xls(request):
             worksheet.write(0,i, txt)
         
         # Data
+        row_to_insert_data = 0
         for ri, row in enumerate(queryset): # For Row iterable, data row in the queryset
+            row_to_insert_data += 1
+            added_m2m_rows = 0 # Extra rows to add to make room for many to many sub fields.
             for ci, field in enumerate(fieldnames): # For Cell iterable, field, fields
                 try:
+                    is_m2m = False # True if this is a sub field of a manytomany field.
                     field = field.split('__')
                     data = getattr(row, field[1])
                     for sub_field in field[2:]:
-                        data = getattr(data, sub_field)
-                    worksheet.write(ri+1, ci, unicode(data))
+                        if str(data.__class__) == "<class 'django.db.models.fields.related.ManyRelatedManager'>":
+                            is_m2m = True
+                            for related_i, related_object in enumerate(data.all()):
+                                data = getattr(related_object, sub_field)
+                                write_to_xls(worksheet, data, row_to_insert_data+related_i, ci, False)
+                                #worksheet.write(row_to_insert_data+related_i, ci, unicode(data))
+                                if added_m2m_rows < related_i:
+                                    added_m2m_rows = related_i
+                        else:
+                            data = getattr(data, sub_field)
+                    write_to_xls(worksheet, data, row_to_insert_data, ci, is_m2m)
                 except: # In case there is a None for a referenced field
-                    pass 
+                    pass
+            row_to_insert_data += added_m2m_rows
         
         # Boring file handeling crap
         fd, fn = tempfile.mkstemp()
@@ -121,5 +152,6 @@ def admin_export_xls(request):
         'model_name': model_class._meta.verbose_name,
         'model': model_class._meta.app_label + ":" +  model_class._meta.module_name,
         'fields': model_fields,
+        'many_to_many': model_class._meta.many_to_many,
         'get_variables': get_variables,
     }, RequestContext(request, {}),)
