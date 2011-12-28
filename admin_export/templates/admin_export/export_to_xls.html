@@ -18,15 +18,21 @@
   });
   
   function get_related(name){
+    var check_default = $("#check_all").is(':checked');
     $.post(  
       "/admin_export/export_to_xls_related/?{{ get_variables }}",  
-      {get_related: "True", rel_name: name},
+      {get_related: "True", rel_name: name, check_default: check_default},
       function(data){
         $("#field_" + name).hide('fast');
         $("#field_" + name).html(data);
         $("#field_" + name).show('slow');
       }  
     );  
+  }
+  
+  function submit_box() {
+    $("#export_xls_form").overlay().close();
+    $('select[name=action] option[value=""]').attr("selected", "selected");
   }
 </script>   
 
@@ -82,6 +88,6 @@
         </tr>
     {% endfor %}
   </table>
-  <input type="submit" name="xls" onclick='$("#export_xls_form").overlay().close();' value="Submit"/>
+  <input type="submit" name="xls" onclick='submit_box();' value="Submit"/>
   <!-- HACK to make sure the submit button isn't under the bottom bar--><br/><br/><br/>
 </form>

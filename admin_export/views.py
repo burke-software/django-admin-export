@@ -36,6 +36,11 @@ def get_fields_for_model(request):
     model_class = ContentType.objects.get(id=request.GET['ct']).model_class()
     queryset = model_class.objects.filter(pk__in=request.GET['ids'].split(','))
     
+    if request.POST['check_default'] == "true":
+        check_default = True
+    else:
+        check_default = False
+    
     rel_name = request.POST['rel_name']
     related = model_class
     for item in rel_name.split('__'):
@@ -57,6 +62,7 @@ def get_fields_for_model(request):
         'fields': model_fields,
         'many_to_many': model._meta.many_to_many,
         'previous_fields': previous_fields,
+        'check_default': check_default,
     }, RequestContext(request, {}),)
 
 def write_to_xls(worksheet, data, row_to_insert_data, ci, is_m2m):
@@ -68,7 +74,8 @@ def write_to_xls(worksheet, data, row_to_insert_data, ci, is_m2m):
             m2m_data += unicode(m2m) + ","
         data = m2m_data[:-1]
     if not is_m2m:
-        worksheet.write(row_to_insert_data, ci, unicode(data))
+        if data:
+            worksheet.write(row_to_insert_data, ci, unicode(data))
 
 def admin_export_xls(request):
     model_class = ContentType.objects.get(id=request.GET['ct']).model_class()

@@ -2,7 +2,7 @@
   {% for field in fields %}
     <tr class="export_table">
       <td class="export_table">
-        <input type="checkbox" class="check_field" checked="checked" name="field__{{ model }}__{{ previous_fields }}__{{ field.name }}"/>
+        <input type="checkbox" class="check_field" {% if check_default %} checked="checked" {% endif %} name="field__{{ model }}__{{ previous_fields }}__{{ field.name }}"/>
       </td>
       <td class="export_table">
         {{ field.verbose_name }}
@@ -23,7 +23,7 @@
   {% for field in many_to_many %}
       <tr class="export_table">
         <td class="export_table">
-          <input type="checkbox" class="check_field" checked="checked" name="field__{{ model }}__{{ previous_fields }}__{{ field.name }}"/>
+          <input type="checkbox" class="check_field" {% if check_default %} checked="checked" {% endif %} name="field__{{ model }}__{{ previous_fields }}__{{ field.name }}"/>
         </td>
         <td class="export_table">
           {{ field.verbose_name }} (Many)
