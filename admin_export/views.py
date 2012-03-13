@@ -26,6 +26,7 @@ from django.http import HttpResponse, HttpResponseRedirect
 from django.db.models import get_model
 from django.shortcuts import render_to_response, get_object_or_404
 from django.template import RequestContext
+from django.utils.encoding import smart_unicode
 
 import tempfile
 import os
@@ -91,7 +92,8 @@ def admin_export_xls(request):
     
     if 'xls' in request.POST:
         workbook = xlwt.Workbook()
-        worksheet = workbook.add_sheet(unicode(model_class._meta.verbose_name_plural))
+        # Remove : which isn't valid in a xls sheet name
+        worksheet = workbook.add_sheet(smart_unicode(model_class._meta.verbose_name_plural).replace(':',''))
         
         # Get field names from POST data
         fieldnames = []
@@ -114,7 +116,7 @@ def admin_export_xls(request):
             txt = ""
             for sub_field in field[1:-1]:
                 txt += sub_field + " "
-            txt += unicode(model._meta.get_field_by_name(field[-1])[0].verbose_name)
+            txt += smart_unicode(model._meta.get_field_by_name(field[-1])[0].verbose_name)
             worksheet.write(0,i, txt)
         
         # Data
