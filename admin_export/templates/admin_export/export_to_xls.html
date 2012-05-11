@@ -17,15 +17,16 @@
     });
   });
   
-  function get_related(name){
+  function get_related(event,name){
     var check_default = $("#check_all").is(':checked');
     $.post(  
       "/admin_export/export_to_xls_related/?{{ get_variables }}",  
       {get_related: "True", rel_name: name, check_default: check_default},
       function(data){
-        $("#field_" + name).hide('fast');
-        $("#field_" + name).html(data);
-        $("#field_" + name).show('slow');
+        var element = $(event.target).parent();
+        $(element).hide('fast');
+        $(element).html(data);
+        $(element).show('slow');
       }  
     );  
   }
@@ -45,7 +46,7 @@
         <input type="checkbox" id="check_all"/>
       </th>
       <th class="export_table">
-        Field
+        Select All
       </th>
     </tr>
   
