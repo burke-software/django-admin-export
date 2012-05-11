@@ -1,0 +1,41 @@
+{% for field in fields %}
+      <tr class="export_table">
+        <td class="export_table">
+          <input
+                type="checkbox"
+                class="check_field" {% if check_default %} checked="checked" {% endif %}
+                name="field__{{ model }}__{% if previous_fields %}{{ previous_fields }}__{% endif %}{{ field.name }}"/>
+        </td>
+        <td class="export_table">
+          {{ field.verbose_name }}
+        </td>
+      </tr>
+      {% if field.related %}{% if field.perm %}
+        <tr class="export_table">
+          <td class="export_table"></td>
+          <td class="export_table">
+            <div id="field_{% if previous_fields %}{{ previous_fields }}__{% endif %}{{ field.name }}">
+              <a href="javascript:void(0)" onclick="get_related('{% if previous_fields %}{{ previous_fields }}__{% endif %}{{ field.name }}')"> >> Expand {{ field.verbose_name }}</a>
+            </div>
+          </td>
+        </tr>
+      {% endif %}{% endif %}
+    {% endfor %}
+    {% for field in many_to_many %}
+      <tr class="export_table">
+        <td class="export_table">
+          <input type="checkbox" class="check_field" {% if check_default %} checked="checked" {% endif %} name="field__{{ model }}__{{ previous_fields }}__{{ field.name }}"/>
+        </td>
+        <td class="export_table">
+          {{ field.verbose_name }} (Many)
+        </td>
+      </tr>
+      <tr class="export_table">
+          <td class="export_table"></td>
+          <td class="export_table">
+            <div id="field_{{ field.name }}">
+              <a href="javascript:void(0)" onclick="get_related('{{ field.name }}')"> >> Expand {{ field.verbose_name }}</a>
+            </div>
+          </td>
+        </tr>
+    {% endfor %}

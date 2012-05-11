@@ -1,4 +1,4 @@
-# Copyright (c) 2011, Burke Software and Consulting LLC
+# Copyright (c) 2011-2012, Burke Software and Consulting LLC
 # All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -57,7 +57,7 @@ def get_fields_for_model(request):
             or request.user.has_perm(field.rel.to._meta.app_label + '.change_' + field.rel.to._meta.module_name):
                 field.perm = True
     
-    return render_to_response('admin_export/export_to_xls_related.html', {
+    return render_to_response('admin_export/fields.html', {
         'model_name': model_class._meta.verbose_name,
         'model': model._meta.app_label + ":" + model._meta.module_name,
         'fields': model_fields,

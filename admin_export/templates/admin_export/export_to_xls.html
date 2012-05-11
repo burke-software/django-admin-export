@@ -42,51 +42,14 @@
   <table>
     <tr class="export_table">
       <th class="export_table">
-        <input type="checkbox" id="check_all" checked="checked" />
+        <input type="checkbox" id="check_all"/>
       </th>
       <th class="export_table">
         Field
       </th>
     </tr>
   
-    {% for field in fields %}
-      <tr class="export_table">
-        <td class="export_table">
-          <input type="checkbox" class="check_field" checked="checked" name="field__{{ model }}__{{ field.name }}"/>
-        </td>
-        <td class="export_table">
-          {{ field.verbose_name }}
-        </td>
-      </tr>
-      {% if field.related %}{% if field.perm %}
-        <tr class="export_table">
-          <td class="export_table"></td>
-          <td class="export_table">
-            <div id="field_{{ field.name }}">
-              <a href="javascript:void(0)" onclick="get_related('{{ field.name }}')"> >> Expand {{ field.verbose_name }}</a>
-            </div>
-          </td>
-        </tr>
-      {% endif %}{% endif %}
-    {% endfor %}
-    {% for field in many_to_many %}
-      <tr class="export_table">
-        <td class="export_table">
-          <input type="checkbox" class="check_field" checked="checked" name="field__{{ model }}__{{ field.name }}"/>
-        </td>
-        <td class="export_table">
-          {{ field.verbose_name }} (Many)
-        </td>
-      </tr>
-      <tr class="export_table">
-          <td class="export_table"></td>
-          <td class="export_table">
-            <div id="field_{{ field.name }}">
-              <a href="javascript:void(0)" onclick="get_related('{{ field.name }}')"> >> Expand {{ field.verbose_name }}</a>
-            </div>
-          </td>
-        </tr>
-    {% endfor %}
+    {% include "admin_export/fields.html" %}
   </table>
   <input type="submit" name="xls" onclick='submit_box();' value="Submit"/>
   <!-- HACK to make sure the submit button isn't under the bottom bar--><br/><br/><br/>
