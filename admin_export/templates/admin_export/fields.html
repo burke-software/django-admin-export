@@ -4,7 +4,7 @@
           <input
                 type="checkbox"
                 class="check_field" {% if check_default %} checked="checked" {% endif %}
-                name="field__{{ model }}__{% if previous_fields %}{{ previous_fields }}__{% endif %}{{ field.name }}"/>
+                name="field__{% if previous_fields %}{{ previous_fields }}__{% endif %}{{ field.name }}"/>
         </td>
         <td class="export_table">
           {{ field.verbose_name }}
@@ -14,8 +14,11 @@
         <tr class="export_table">
           <td class="export_table"></td>
           <td class="export_table">
-            <div id="field_{% if previous_fields %}{{ previous_fields }}__{% endif %}{{ field.name }}">
-              <a href="javascript:void(0)" onclick="get_related(event,'{% if previous_fields %}{{ previous_fields }}__{% endif %}{{ field.name }}')"> >> Expand {{ field.verbose_name }}</a>
+            <div>
+              <a
+                 href="javascript:void(0)" onclick="get_related(event,'{% if previous_fields %}{{ previous_fields }}__{% endif %}{{ field.name }}')">
+                >> Expand {{ field.verbose_name }}
+              </a>
             </div>
           </td>
         </tr>
@@ -24,7 +27,10 @@
     {% for field in many_to_many %}
       <tr class="export_table">
         <td class="export_table">
-          <input type="checkbox" class="check_field" {% if check_default %} checked="checked" {% endif %} name="field__{{ model }}__{{ previous_fields }}__{{ field.name }}"/>
+          <input
+                 type="checkbox"
+                 class="check_field" {% if check_default %} checked="checked" {% endif %}
+                 name="field__{%if previous_fields %}{{ previous_fields }}__{% endif %}{{ field.name }}"/>
         </td>
         <td class="export_table">
           {{ field.verbose_name }} (Many)
@@ -33,8 +39,12 @@
       <tr class="export_table">
           <td class="export_table"></td>
           <td class="export_table">
-            <div id="field_{{ field.name }}">
-              <a href="javascript:void(0)" onclick="get_related(event,'{% if previous_fields %}{{ previous_fields }}__{% endif %}{{ field.name }}')"> >> Expand {{ field.verbose_name }}</a>
+            <div>
+              <a
+                 href="javascript:void(0)"
+                 onclick="get_related(event,'{% if previous_fields %}{{ previous_fields }}__{% endif %}{{ field.name }}')">
+                >> Expand {{ field.verbose_name }}
+              </a>
             </div>
           </td>
         </tr>

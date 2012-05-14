@@ -59,7 +59,6 @@ def get_fields_for_model(request):
     
     return render_to_response('admin_export/fields.html', {
         'model_name': model_class._meta.verbose_name,
-        'model': model._meta.app_label + ":" + model._meta.module_name,
         'fields': model_fields,
         'many_to_many': model._meta.many_to_many,
         'previous_fields': previous_fields,
@@ -77,6 +76,53 @@ def write_to_xls(worksheet, data, row_to_insert_data, ci, is_m2m):
     if not is_m2m:
         if data:
             worksheet.write(row_to_insert_data, ci, unicode(data))
+
+def name_to_title(model, name):
+    """
+    Determines the title for a name
+    name example: placement__cras__fname'
+    where placement is a fk of instance, cra's is a m2m, and fname is just a field
+    Essentially, it just replaces the field names with their verbose names
+    result: placement cras First name
+    """
+    result = ""
+    for part in name.split('__'):
+        if hasattr(model,part): #This is no regular field, m2m or fk?
+            if getattr(model,part).__class__.__name__ in ["ReverseSingleRelatedObjectDescriptor",
+                                                          "ReverseManyRelatedObjectsDescriptor"]:
+                result += getattr(model,part).field.verbose_name + " "
+                model = type(getattr(model,part).field.related.parent_model())
+        else:
+            result += model._meta.get_field(part).verbose_name + " "
+    return result.strip()
+
+def name_to_data(instance, name):
+    """
+    With a instance and a long name this function determines it's value
+    name example: placement__cras__fname
+    where placement is a fk, cra's is a m2m, and fname is just a field
+    If the field is a reference it will return the reference (such as a FK)
+    It's you to you to deal with this, it won't just give you a string.
+    Returns 2 items:
+        either field or array of m2m fieldsex: 'David' or ["David", "Bob"]
+        number of m2m rows
+    It cannot handle more than one m2m!
+    """
+    result = instance # we will eventually return this as the answer
+    m2m_result = []
+    m2m_count = 0
+    # start by dividing the name by the __ which are seperators
+    for i,part in enumerate(name.split('__')):
+          # check if it exists
+        if hasattr(result,part):
+            result = getattr(result,part)
+            if result.__class__.__name__ == 'ManyRelatedManager' and part != name.split('__')[-1]:
+                for m2m_object in result.all():
+                    m2m_result += [name_to_data(m2m_object, '__'.join(name.split('__')[i+1:]))[0]]
+                    m2m_count += 1
+    if m2m_result:
+        return m2m_result, m2m_count
+    return result, m2m_count
 
 def admin_export_xls(request):
     model_class = ContentType.objects.get(id=request.GET['ct']).model_class()
@@ -102,48 +148,31 @@ def admin_export_xls(request):
         for value in request.raw_post_data.split('&'):
             if value[:7] == "field__" and value[-3:] == "=on":
                 fieldname = value[7:-3]
-                app = fieldname.split('__')[0].split('%3A')[0]
-                model = fieldname.split('__')[0].split('%3A')[1]
-                # Server side permission check, edit implies view.
-                if request.user.has_perm(app + '.view_' + model) or request.user.has_perm(app + '.change_' + model):
-                    fieldnames.append(fieldname)
+                fieldnames.append(fieldname)
                 
         # Title
         for i, field in enumerate(fieldnames):
-            #ex field 'sis%3Astudent__fname'
-            field = field.split('__')
-            model = get_model(field[0].split('%3A')[0], field[0].split('%3A')[1])
-            txt = ""
-            for sub_field in field[1:-1]:
-                txt += sub_field + " "
-            txt += smart_unicode(model._meta.get_field_by_name(field[-1])[0].verbose_name)
+            txt=name_to_title(model_class, field)
             worksheet.write(0,i, txt)
         
         # Data
-        row_to_insert_data = 0
-        for ri, row in enumerate(queryset): # For Row iterable, data row in the queryset
-            row_to_insert_data += 1
-            added_m2m_rows = 0 # Extra rows to add to make room for many to many sub fields.
+        row_to_insert_data = 1
+        for row in queryset: # For Row iterable, data row in the queryset
+            added_rows = 1 # Extra rows to add to make room for many to many sub fields.
             for ci, field in enumerate(fieldnames): # For Cell iterable, field, fields
                 try:
-                    is_m2m = False # True if this is a sub field of a manytomany field.
-                    field = field.split('__')
-                    data = getattr(row, field[1])
-                    for sub_field in field[2:]:
-                        if str(data.__class__) == "<class 'django.db.models.fields.related.ManyRelatedManager'>":
-                            is_m2m = True
-                            for related_i, related_object in enumerate(data.all()):
-                                data = getattr(related_object, sub_field)
-                                write_to_xls(worksheet, data, row_to_insert_data+related_i, ci, False)
-                                #worksheet.write(row_to_insert_data+related_i, ci, unicode(data))
-                                if added_m2m_rows < related_i:
-                                    added_m2m_rows = related_i
-                        else:
-                            data = getattr(data, sub_field)
-                    write_to_xls(worksheet, data, row_to_insert_data, ci, is_m2m)
-                except: # In case there is a None for a referenced field
+                    data, m2m_count = name_to_data(row, field)
+                    if m2m_count:
+                        # Adding multiple fors for one item in original queryset
+                        if m2m_count > added_rows:
+                            added_rows = m2m_count
+                        for mi, m2m_field in enumerate(data):
+                            write_to_xls(worksheet, m2m_field, row_to_insert_data + mi, ci, False)
+                    else: # Simple add one cell of data
+                        write_to_xls(worksheet, data, row_to_insert_data, ci, False)
+                except:
                     pass
-            row_to_insert_data += added_m2m_rows
+            row_to_insert_data += added_rows
         
         # Boring file handeling crap
         fd, fn = tempfile.mkstemp()
