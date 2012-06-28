@@ -139,7 +139,7 @@ def admin_export_xls(request):
     if 'xls' in request.POST:
         workbook = xlwt.Workbook()
         # Remove : which isn't valid in a xls sheet name
-        worksheet = workbook.add_sheet(smart_unicode(model_class._meta.verbose_name_plural).replace(':',''))
+        worksheet = workbook.add_sheet(smart_unicode(model_class._meta.verbose_name_plural).replace(':','')[:30])
         
         # Get field names from POST data
         fieldnames = []
