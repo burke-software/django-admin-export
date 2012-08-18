@@ -21,6 +21,7 @@
 # ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 # POSSIBILITY OF SUCH DAMAGE.
 
+import django
 from django.contrib.contenttypes.models import ContentType
 from django.http import HttpResponse, HttpResponseRedirect
 from django.db.models import get_model
@@ -32,37 +33,72 @@ import tempfile
 import os
 import xlwt
 
-def get_fields_for_model(request):
-    """ Get the related fields of a selected foreign key """
+def get_fields_for_model(request, initial=False):
     model_class = ContentType.objects.get(id=request.GET['ct']).model_class()
     queryset = model_class.objects.filter(pk__in=request.GET['ids'].split(','))
+    get_variables = request.META['QUERY_STRING']
+    model_fields = []
     
-    if request.POST['check_default'] == "true":
-        check_default = True
-    else:
-        check_default = False
+    previous_fields = None
+    check_default = False
+    if request.POST:
+        if request.POST['check_default'] == "true":
+            check_default = True
+        if request.POST['rel_name']:
+            previous_fields = request.POST['rel_name']
+            for item in request.POST['rel_name'].split('__'):
+                field, field_model, direct, m2m  = model_class._meta.get_field_by_name(item)
+                if direct:
+                    model_class = getattr(model_class, item).field.rel.to
+                else:
+                    model_class = field.model()
     
-    rel_name = request.POST['rel_name']
-    related = model_class
-    for item in rel_name.split('__'):
-        related = getattr(related, item).field.rel.to
-    
-    model = related
-    model_fields = model._meta.fields
-    previous_fields = rel_name
-    
-    for field in model_fields:
-        if hasattr(field, 'related'):
+    for field_name in model_class._meta.get_all_field_names():
+        field, field_model, direct, m2m = model_class._meta.get_field_by_name(field_name)
+        field.direct = direct
+        field.m2m = m2m
+        
+        if not direct and not m2m and not hasattr(field,'related'):
+            field.related = True
+        
+        if not direct and not m2m:
+            # These are fields outside the model that relate to this model
+            # There is no easy way to get the names, so we just set them here
+            field.name = field.var_name
+            field.verbose_name = field.model._meta.verbose_name
+            model_fields += [field]
+        elif hasattr(field, 'related'):
             if request.user.has_perm(field.rel.to._meta.app_label + '.view_' + field.rel.to._meta.module_name)\
             or request.user.has_perm(field.rel.to._meta.app_label + '.change_' + field.rel.to._meta.module_name):
-                field.perm = True
+                model_fields += [field]
+        elif direct and not m2m:
+            model_fields += [field]
+            
+    # Sort fields so FK and M2M go to bottom - this makes the reports MUCH neater keeping related stay stuff together
+    m2m_fields = []
+    direct_fields = []
+    related_fields = []
+    for field in model_fields:
+        if field.m2m:
+            m2m_fields += [field]
+        elif field.direct:
+            direct_fields += [field]
+        else:
+            related_fields += [field]
     
-    return render_to_response('admin_export/fields.html', {
+    fields = direct_fields + related_fields + m2m_fields
+    
+    
+    if initial:
+        template = 'admin_export/export_to_xls.html'
+    else:
+        template = 'admin_export/fields.html'
+    return render_to_response(template, {
         'model_name': model_class._meta.verbose_name,
-        'fields': model_fields,
-        'many_to_many': model._meta.many_to_many,
+        'fields': fields,
         'previous_fields': previous_fields,
         'check_default': check_default,
+        'get_variables':get_variables,
     }, RequestContext(request, {}),)
 
 def write_to_xls(worksheet, data, row_to_insert_data, ci, is_m2m):
@@ -87,14 +123,24 @@ def name_to_title(model, name):
     """
     result = ""
     for part in name.split('__'):
-        if hasattr(model,part): #This is no regular field, m2m or fk?
-            if getattr(model,part).__class__.__name__ in ["ReverseSingleRelatedObjectDescriptor",
-                                                          "ReverseManyRelatedObjectsDescriptor"]:
-                result += getattr(model,part).field.verbose_name + " "
-                model = type(getattr(model,part).field.related.parent_model())
+        field, field_model, direct, m2m = model._meta.get_field_by_name(part)
+        
+        # Add the verbose name to the title
+        if direct:
+            result += field.verbose_name + " "
         else:
-            result += model._meta.get_field(part).verbose_name + " "
+            result += field.model()._meta.verbose_name + " "
+        
+        # If we moved models, we need change to the next model
+        if m2m:
+            model = type(getattr(model,part).field.related.parent_model())
+        elif direct and field.rel:
+            model = type(getattr(model,part).field.related.parent_model())
+        elif field.__class__ == django.db.models.related.RelatedObject:
+            model = field.model()
+            
     return result.strip()
+
 
 def name_to_data(instance, name):
     """
@@ -112,14 +158,21 @@ def name_to_data(instance, name):
     m2m_result = []
     m2m_count = 0
     # start by dividing the name by the __ which are seperators
-    for i,part in enumerate(name.split('__')):
-          # check if it exists
-        if hasattr(result,part):
-            result = getattr(result,part)
-            if result.__class__.__name__ == 'ManyRelatedManager' and part != name.split('__')[-1]:
+    for i, part in enumerate(name.split('__')):
+        # check if it exists
+        try:
+            field, field_model, direct, m2m = result._meta.get_field_by_name(part)
+            if not direct and not m2m and field.__class__ == django.db.models.related.RelatedObject:
+                part = field.get_accessor_name()
+        except:
+            pass
+        if hasattr(result, part):
+            result = getattr(result, part)
+            if result.__class__.__name__ in ['ManyRelatedManager','RelatedManager'] and part != name.split('__')[-1]:
                 for m2m_object in result.all():
                     m2m_result += [name_to_data(m2m_object, '__'.join(name.split('__')[i+1:]))[0]]
                     m2m_count += 1
+            
     if m2m_result:
         return m2m_result, m2m_count
     return result, m2m_count
@@ -128,13 +181,6 @@ def admin_export_xls(request):
     model_class = ContentType.objects.get(id=request.GET['ct']).model_class()
     queryset = model_class.objects.filter(pk__in=request.GET['ids'].split(','))
     get_variables = request.META['QUERY_STRING']
-    model_fields = model_class._meta.fields
-    
-    for field in model_fields:
-        if hasattr(field, 'related'):
-            if request.user.has_perm(field.rel.to._meta.app_label + '.view_' + field.rel.to._meta.module_name)\
-            or request.user.has_perm(field.rel.to._meta.app_label + '.change_' + field.rel.to._meta.module_name):
-                field.perm = True
     
     if 'xls' in request.POST:
         workbook = xlwt.Workbook()
@@ -160,7 +206,7 @@ def admin_export_xls(request):
         for row in queryset: # For Row iterable, data row in the queryset
             added_rows = 1 # Extra rows to add to make room for many to many sub fields.
             for ci, field in enumerate(fieldnames): # For Cell iterable, field, fields
-                try:
+                    #try:
                     data, m2m_count = name_to_data(row, field)
                     if m2m_count:
                         # Adding multiple fors for one item in original queryset
@@ -170,8 +216,8 @@ def admin_export_xls(request):
                             write_to_xls(worksheet, m2m_field, row_to_insert_data + mi, ci, False)
                     else: # Simple add one cell of data
                         write_to_xls(worksheet, data, row_to_insert_data, ci, False)
-                except:
-                    pass
+                    #except:
+                    #    pass
             row_to_insert_data += added_rows
         
         # Boring file handeling crap
@@ -185,11 +231,5 @@ def admin_export_xls(request):
         response['Content-Disposition'] = 'attachment; filename="%s.xls"' % \
               (unicode(model_class._meta.verbose_name_plural),)
         return response
-    
-    return render_to_response('admin_export/export_to_xls.html', {
-        'model_name': model_class._meta.verbose_name,
-        'model': model_class._meta.app_label + ":" +  model_class._meta.module_name,
-        'fields': model_fields,
-        'many_to_many': model_class._meta.many_to_many,
-        'get_variables': get_variables,
-    }, RequestContext(request, {}),)
+    else:
+        return get_fields_for_model(request, initial=True)

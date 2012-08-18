@@ -1,51 +1,32 @@
 {% for field in fields %}
-      <tr class="export_table">
+    <tr class="export_table">
         <td class="export_table">
-          <input
+            <input
                 type="checkbox"
                 class="check_field" {% if check_default %} checked="checked" {% endif %}
-                name="field__{% if previous_fields %}{{ previous_fields }}__{% endif %}{{ field.name }}"/>
+                name="field__{% if previous_fields %}{{ previous_fields }}__{% endif %}{{ field.name }}"
+            />
         </td>
         <td class="export_table">
-          {{ field.verbose_name }}
+            {{ field.verbose_name }}
         </td>
-      </tr>
-      {% if field.related %}{% if field.perm %}
+    </tr>
+    {% if field.related %}
         <tr class="export_table">
-          <td class="export_table"></td>
-          <td class="export_table">
-            <div>
-              <a
-                 href="javascript:void(0)" onclick="get_related(event,'{% if previous_fields %}{{ previous_fields }}__{% endif %}{{ field.name }}')">
-                >> Expand {{ field.verbose_name }}
-              </a>
-            </div>
-          </td>
+            <td class="export_table"></td>
+            <td class="export_table">
+                <div>
+                    <a
+                        href="javascript:void(0)"
+                        onclick="get_related(event,'{% if previous_fields %}{{ previous_fields }}__{% endif %}{{ field.name }}')"
+                    >
+                        >> Expand {{ field.verbose_name }}
+                        {% if field.m2m %}
+                            (Many)
+                        {% endif %}
+                    </a>
+                </div>
+            </td>
         </tr>
-      {% endif %}{% endif %}
-    {% endfor %}
-    {% for field in many_to_many %}
-      <tr class="export_table">
-        <td class="export_table">
-          <input
-                 type="checkbox"
-                 class="check_field" {% if check_default %} checked="checked" {% endif %}
-                 name="field__{%if previous_fields %}{{ previous_fields }}__{% endif %}{{ field.name }}"/>
-        </td>
-        <td class="export_table">
-          {{ field.verbose_name }} (Many)
-        </td>
-      </tr>
-      <tr class="export_table">
-          <td class="export_table"></td>
-          <td class="export_table">
-            <div>
-              <a
-                 href="javascript:void(0)"
-                 onclick="get_related(event,'{% if previous_fields %}{{ previous_fields }}__{% endif %}{{ field.name }}')">
-                >> Expand {{ field.verbose_name }}
-              </a>
-            </div>
-          </td>
-        </tr>
-    {% endfor %}
+    {% endif %}
+{% endfor %}
