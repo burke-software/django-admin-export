@@ -47,11 +47,14 @@ def get_fields_for_model(request, initial=False):
         if request.POST['rel_name']:
             previous_fields = request.POST['rel_name']
             for item in request.POST['rel_name'].split('__'):
-                field, field_model, direct, m2m  = model_class._meta.get_field_by_name(item)
-                if direct:
-                    model_class = getattr(model_class, item).field.rel.to
+                if hasattr(model_class, item) and hasattr(getattr(model_class, item), 'related'):
+                    model_class = getattr(model_class, item).related.model
                 else:
-                    model_class = field.model()
+                    field, field_model, direct, m2m  = model_class._meta.get_field_by_name(item)
+                    if direct:
+                        model_class = getattr(model_class, item).field.rel.to
+                    else:
+                        model_class = field.model
     
     for field_name in model_class._meta.get_all_field_names():
         field, field_model, direct, m2m = model_class._meta.get_field_by_name(field_name)
@@ -64,7 +67,7 @@ def get_fields_for_model(request, initial=False):
         if not direct and not m2m:
             # These are fields outside the model that relate to this model
             # There is no easy way to get the names, so we just set them here
-            field.name = field.var_name
+            field.name = field.get_accessor_name()
             field.verbose_name = field.model._meta.verbose_name
             model_fields += [field]
         elif hasattr(field, 'related'):
@@ -110,7 +113,7 @@ def write_to_xls(worksheet, data, row_to_insert_data, ci, is_m2m):
             m2m_data += unicode(m2m) + ","
         data = m2m_data[:-1]
     if not is_m2m:
-        if data:
+        if data and ci < 256:
             worksheet.write(row_to_insert_data, ci, unicode(data))
 
 def name_to_title(model, name):
@@ -123,7 +126,13 @@ def name_to_title(model, name):
     """
     result = ""
     for part in name.split('__'):
-        field, field_model, direct, m2m = model._meta.get_field_by_name(part)
+        if hasattr(model, part) and hasattr(getattr(model, part), 'related'):
+            field = getattr(model, part).related
+            direct = False
+            m2m = False
+            field_model = None
+        else:
+            field, field_model, direct, m2m = model._meta.get_field_by_name(part)
         
         # Add the verbose name to the title
         if direct:
@@ -133,11 +142,14 @@ def name_to_title(model, name):
         
         # If we moved models, we need change to the next model
         if m2m:
-            model = type(getattr(model,part).field.related.parent_model())
+            if field.__class__.__name__ == 'RelatedObject':
+                model = field.field.model
+            else:
+                model = getattr(model,part).field.related.parent_model
         elif direct and field.rel:
-            model = type(getattr(model,part).field.related.parent_model())
+            model = getattr(model,part).field.related.parent_model
         elif field.__class__ == django.db.models.related.RelatedObject:
-            model = field.model()
+            model = field.model
             
     return result.strip()
 
@@ -172,6 +184,8 @@ def name_to_data(instance, name):
                 for m2m_object in result.all():
                     m2m_result += [name_to_data(m2m_object, '__'.join(name.split('__')[i+1:]))[0]]
                     m2m_count += 1
+            if hasattr(result,'all'):
+                result = result.all()
             
     if m2m_result:
         return m2m_result, m2m_count
@@ -198,8 +212,9 @@ def admin_export_xls(request):
                 
         # Title
         for i, field in enumerate(fieldnames):
-            txt=name_to_title(model_class, field)
-            worksheet.write(0,i, txt)
+            if i < 256: # xls format limit!
+                txt=name_to_title(model_class, field)
+                worksheet.write(0,i, txt)
         
         # Data
         row_to_insert_data = 1
