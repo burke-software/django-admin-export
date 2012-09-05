@@ -114,7 +114,7 @@ def write_to_xls(worksheet, data, row_to_insert_data, ci, is_m2m):
         data = m2m_data[:-1]
     if not is_m2m:
         if data and ci < 256:
-            worksheet.write(row_to_insert_data, ci, unicode(data))
+            worksheet.write(row_to_insert_data, ci, smart_unicode(data))
 
 def name_to_title(model, name):
     """
