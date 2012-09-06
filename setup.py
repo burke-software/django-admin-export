@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = "django-admin-export",
-    version = "1.0",
+    version = "1.4",
     author = "David Burke",
     author_email = "david@burkesoftware.com",
     description = ("Generic export to xls action for Django admin interface"),
