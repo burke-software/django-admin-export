@@ -23,6 +23,7 @@
 
 import django
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.admin.views.decorators import staff_member_required
 from django.http import HttpResponse, HttpResponseRedirect
 from django.db.models import get_model
 from django.shortcuts import render_to_response, get_object_or_404
@@ -191,6 +192,7 @@ def name_to_data(instance, name):
         return m2m_result, m2m_count
     return result, m2m_count
 
+@staff_member_required
 def admin_export_xls(request):
     model_class = ContentType.objects.get(id=request.GET['ct']).model_class()
     queryset = model_class.objects.filter(pk__in=request.GET['ids'].split(','))
