@@ -5,17 +5,14 @@
   }
 </style>
 <script type="text/javascript"> 
-  $(document).ready(function()
+  function check_all_handler(el)
   {
-    $("#check_all").click(function()        
+    var checked_status = el.checked;
+    $(".check_field").each(function()
     {
-      var checked_status = this.checked;
-      $(".check_field").each(function()
-      {
-        this.checked = checked_status;
-      });
+      this.checked = checked_status;
     });
-  });
+  }
   
   function get_related(event,name){
     var check_default = $("#check_all").is(':checked');
@@ -43,7 +40,7 @@
   <table>
     <tr class="export_table">
       <th class="export_table">
-        <input type="checkbox" id="check_all"/>
+        <input type="checkbox" id="check_all" onclick="check_all_handler(this)"/>
       </th>
       <th class="export_table">
         Select All
