@@ -207,7 +207,7 @@ def admin_export_xls(request):
         fieldnames = []
         # request.POST reorders the data :( There's little reason to go through all
         # the work of reordering it right again when raw data is ordered correctly.
-        for value in request.raw_post_data.split('&'):
+        for value in request.body.split('&'):
             if value[:7] == "field__" and value[-3:] == "=on":
                 fieldname = value[7:-3]
                 fieldnames.append(fieldname)
