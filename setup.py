@@ -2,13 +2,13 @@ from setuptools import setup, find_packages
 
 setup(
     name = "django-admin-export",
-    version = "1.8",
+    version = "2.0",
     author = "David Burke",
     author_email = "david@burkesoftware.com",
     description = ("Generic export to xls action for Django admin interface"),
     license = "BSD",
     keywords = "django admin",
-    url = "http://code.google.com/p/django-admin-export/",
+    url = "https://github.com/burke-software/django-admin-export",
     packages=find_packages(),
     include_package_data=True,
     classifiers=[
