@@ -1,7 +1,8 @@
 from django.conf.urls import *
-from views import *
+from django.contrib.admin.views.decorators import staff_member_required
+from .views import AdminExport, AdminExportRelated
 
 urlpatterns = patterns('',
-    (r'^export_to_xls/$', admin_export_xls),
-    (r'^export_to_xls_related/$', get_fields_for_model),
+    (r'^export_to_xls/$', staff_member_required(AdminExport.as_view())),
+    (r'^export_to_xls_related/$', staff_member_required(AdminExportRelated.as_view())),
 )

@@ -1,24 +1,44 @@
-<style type="text/css">
-  .export_table {
-    padding: 2px 0px 3px 3px;
-    text-align: left;
-  }
-</style>
-<script type="text/javascript"> 
-  function check_all_handler(el)
-  {
-    var checked_status = el.checked;
-    $(".check_field").each(function()
-    {
-      this.checked = checked_status;
-    });
+{% extends 'admin/base.html' %}
+
+{% block javascripts %}
+<script type="text/javascript">
+  // http://stackoverflow.com/a/9757655/443457
+  window.goBack = function (e){
+    var defaultLocation = "/";
+    var oldHash = window.location.hash;
+    history.back(); // Try to go back
+    var newHash = window.location.hash;
+    if(
+        newHash === oldHash &&
+        (typeof(document.referrer) !== "string" || document.referrer  === "")
+    ){
+        window.setTimeout(function(){
+            // redirect to default location
+            window.location.href = defaultLocation;
+        },1000); // set timeout in ms
+    }
+    if(e){
+        if(e.preventDefault)
+            e.preventDefault();
+        if(e.preventPropagation)
+            e.preventPropagation();
+    }
+    return false; // stop event propagation and browser default event
   }
   
-  function get_related(event,name){
+  function check_all_handler() {
+    if ($('#check_all').prop('checked')) {
+      $('.check_field').prop('checked', true)
+    } else {
+      $('.check_field').prop('checked', false)
+    }
+  }
+  
+  function show_fields(event, model_ct, field, path, path_verbose) {
     var check_default = $("#check_all").is(':checked');
     $.post(  
-      "/admin_export/export_to_xls_related/?{{ get_variables }}",  
-      {get_related: "True", rel_name: name, check_default: check_default},
+      "/admin_export/export_to_xls_related/",  
+      {model_ct: model_ct, field: field, path: path, check_default: check_default},
       function(data){
         var element = $(event.target).parent();
         $(element).hide('fast');
@@ -28,19 +48,33 @@
     );  
   }
   
-  function submit_box() {
-    $("#export_xls_form").overlay().close();
-    $('select[name=action] option[value=""]').attr("selected", "selected");
-  }
-</script>   
+</script>
+{% endblock %}
 
-<h2> Export {{ model_name }} </h2>
-<form method="post" action="/admin_export/export_to_xls/?{{ get_variables }}">
+{% block breadcrumbs %}
+<a href="/"> Home </a>>
+<a onclick="goBack();">Change {{ model_name }} </a>>
+Export
+{% endblock %}
+
+
+{% block content %}
+<h2> Export {{ model_name }} ({{ queryset.count }}) </h2>
+<p>
+  {% for object in queryset|slice:":10" %}
+    {{ object }}
+    {% if not forloop.last %},{% endif %} 
+  {% endfor %}
+  {% if queryset.count > 10 %}...{% endif %}
+</p>
+
+<div>
+<form method="post" action="">
   {% csrf_token %}
   <table>
     <tr class="export_table">
       <th class="export_table">
-        <input type="checkbox" id="check_all" onclick="check_all_handler(this)"/>
+        <input type="checkbox" id="check_all" onclick="check_all_handler();"/>
       </th>
       <th class="export_table">
         Select All
@@ -49,6 +83,8 @@
   
     {% include "admin_export/fields.html" %}
   </table>
-  <input type="submit" name="xls" onclick='submit_box();' value="Submit"/>
-  <!-- HACK to make sure the submit button isn't under the bottom bar--><br/><br/><br/>
+  <input type="submit" value="Submit"/>
 </form>
+</div>
+
+{% endblock %}
