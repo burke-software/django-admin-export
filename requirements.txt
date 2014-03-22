@@ -1,2 +1,2 @@
 django
-django-report-utils
+django-report-utils>=0.2
