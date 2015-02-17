@@ -1,90 +1,74 @@
-{% extends 'admin/base.html' %}
+{% extends 'admin/base_site.html' %}
+{% load i18n admin_urls admin_static %}
 
-{% block javascripts %}
-<script type="text/javascript">
-  // http://stackoverflow.com/a/9757655/443457
-  window.goBack = function (e){
-    var defaultLocation = "/";
-    var oldHash = window.location.hash;
-    history.back(); // Try to go back
-    var newHash = window.location.hash;
-    if(
-        newHash === oldHash &&
-        (typeof(document.referrer) !== "string" || document.referrer  === "")
-    ){
-        window.setTimeout(function(){
-            // redirect to default location
-            window.location.href = defaultLocation;
-        },1000); // set timeout in ms
-    }
-    if(e){
-        if(e.preventDefault)
-            e.preventDefault();
-        if(e.preventPropagation)
-            e.preventPropagation();
-    }
-    return false; // stop event propagation and browser default event
-  }
-  
-  function check_all_handler() {
-    if ($('#check_all').prop('checked')) {
-      $('.check_field').prop('checked', true)
-    } else {
-      $('.check_field').prop('checked', false)
-    }
-  }
-  
-  function show_fields(event, model_ct, field, path, path_verbose) {
-    var check_default = $("#check_all").is(':checked');
-    $.post(  
-      "/admin_export/export_to_xls_related/",  
-      {model_ct: model_ct, field: field, path: path, check_default: check_default},
-      function(data){
-        var element = $(event.target).parent();
-        $(element).hide('fast');
-        $(element).html(data);
-        $(element).show('slow');
-      }  
-    );  
-  }
-  
-</script>
+{% block extrahead %}
+    {{ block.super }}
+    <script src="{% static "admin/js/jquery.min.js" %}"></script>
+    <script type="text/javascript">
+        (function ($) {
+            window.show_fields = function (event, model_ct, field, path, path_verbose) {
+                var check_default = $("#check_all").is(':checked');
+                $(event.target.parentNode).load(location.pathname, $.param({
+                    related: 1,
+                    model_ct: model_ct,
+                    field: field,
+                    path: path,
+                    check_default: check_default
+                }));
+            };
+            $(function () {
+                $("#check_all").click(function () {
+                    var checked = !!this.checked;
+                    $('.check_field').prop('checked', checked);
+                });
+            });
+        }(jQuery));
+
+    </script>
 {% endblock %}
 
 {% block breadcrumbs %}
-<a href="/"> Home </a>>
-<a onclick="goBack();">Change {{ model_name }} </a>>
-Export
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+        &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+        &rsaquo; {% if has_change_permission %}
+        <a href="{% url opts|admin_urlname:'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>{% else %}
+        {{ opts.verbose_name_plural|capfirst }}{% endif %}
+        &rsaquo; {% trans 'Export' %}
+    </div>
 {% endblock %}
 
 
 {% block content %}
-<h2> Export {{ model_name }} ({{ queryset.count }}) </h2>
-<p>
-  {% for object in queryset|slice:":10" %}
-    {{ object }}
-    {% if not forloop.last %},{% endif %} 
-  {% endfor %}
-  {% if queryset.count > 10 %}...{% endif %}
-</p>
+    <h2> Export {{ opts.verbose_name_plural }} ({{ queryset.count }}) </h2>
+    <p>
+        {% for object in queryset|slice:":10" %}
+            {{ object }}
+            {% if not forloop.last %},{% endif %}
+        {% endfor %}
+        {% if queryset.count > 10 %}...{% endif %}
+    </p>
 
-<div>
-<form method="post" action="">
-  {% csrf_token %}
-  <table>
-    <tr class="export_table">
-      <th class="export_table">
-        <input type="checkbox" id="check_all" onclick="check_all_handler();"/>
-      </th>
-      <th class="export_table">
-        Select All
-      </th>
-    </tr>
-  
-    {% include "admin_export/fields.html" %}
-  </table>
-  <input type="submit" value="Submit"/>
-</form>
-</div>
+    <div>
+        <form method="post" action="">
+            {% csrf_token %}
+            <table>
+                <tr class="export_table">
+                    <th class="export_table">
+                        <input type="checkbox" id="check_all">
+                    </th>
+                    <th class="export_table">
+                        <label for="check_all">Select All</label>
+                    </th>
+                </tr>
+
+                {% include "admin_export/fields.html" %}
+            </table>
+            <br/>
+            <hr/>
+            <br/>
+            <input type="submit" value="Export"/>
+        </form>
+    </div>
 
 {% endblock %}

@@ -15,7 +15,7 @@ Install
 -------
 1. ``pip install django-admin-export``
 2. Add ``admin_export`` to INSTALLED_APPS
-3. Add ``(r'^admin_export/', include("admin_export.urls")),`` to urls.py
+3. Add ``url(r'^admin_export/', include("admin_export.urls", namespace="admin_export")),`` to your project's urls.py
 
 Usage
 -----

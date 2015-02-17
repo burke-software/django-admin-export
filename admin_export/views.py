@@ -14,13 +14,17 @@ class AdminExport(GetFieldsMixin, DataExportMixin, TemplateView):
         context = super(AdminExport, self).get_context_data(**kwargs)
         field_name = self.request.GET.get('field', '')
         model_class = ContentType.objects.get(id=self.request.GET['ct']).model_class()
-        if self.request.GET['ids'] == "IN_SESSION":
-            queryset = model_class.objects.filter(pk__in=self.request.session['selected_ids'])
+
+        if self.request.GET.get("session_key"):
+            ids = self.request.session[self.request.GET["session_key"]]
         else:
-            queryset = model_class.objects.filter(pk__in=self.request.GET['ids'].split(','))
+            ids = self.request.GET['ids'].split(',')
+
+        queryset = model_class.objects.filter(pk__in=ids)
+
         path = self.request.GET.get('path', '')
         path_verbose = self.request.GET.get('path_verbose', '')
-        context['model_name'] = model_class.__name__.lower()
+        context['opts'] = model_class._meta
         context['queryset'] = queryset
         context['model_ct'] = self.request.GET['ct']
         field_data = self.get_fields(model_class, field_name, path, path_verbose)
@@ -40,18 +44,24 @@ class AdminExport(GetFieldsMixin, DataExportMixin, TemplateView):
         )
         return self.list_to_xlsx_response(data_list, header=fields)
 
+    def get(self, request, *args, **kwargs):
+        if request.REQUEST.get("related"):  # Dispatch to the other view
+            return AdminExportRelated.as_view()(request=self.request)
+        return super(AdminExport, self).get(request, *args, **kwargs)
+
 
 class AdminExportRelated(GetFieldsMixin, TemplateView):
     template_name = 'admin_export/fields.html'
 
-    def post(self, request, **kwargs):
+    def get(self, request, **kwargs):
         context = self.get_context_data(**kwargs)
-        model_class = ContentType.objects.get(id=self.request.POST['model_ct']).model_class()
-        field_name = request.POST['field']
-        path = request.POST['path']
+        model_class = ContentType.objects.get(id=self.request.GET['model_ct']).model_class()
+        field_name = request.GET['field']
+        path = request.GET['path']
         field_data = self.get_fields(model_class, field_name, path, '')
         context['related_fields'], model_ct, context['path'] = self.get_related_fields(model_class, field_name, path)
         context['model_ct'] = model_ct.id
         context['field_name'] = field_name
+        context['table'] = True
         context = dict(context.items() + field_data.items())
         return self.render_to_response(context)

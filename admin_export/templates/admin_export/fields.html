@@ -1,6 +1,7 @@
+{% if table %}<table>{% endif %}
 {% if field_name %}
     <tr>
-        <td></td><td>{{ field_name }}</td>
+        <th colspan="2">{{ field_name }}</th>
     </tr>
 {% endif %}
 
@@ -38,7 +39,9 @@
         {% else %}
             {{ field.get_accessor_name }}
         {% endif %}
+        &rarr;
         </a>
     </td>
 </tr>
 {% endfor %}
+{% if table %}</table>{% endif %}
