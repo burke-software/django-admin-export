@@ -2,6 +2,7 @@ from django.contrib import admin
 from django.contrib.contenttypes.models import ContentType
 from django.http import HttpResponseRedirect
 
+
 def export_simple_selected_objects(modeladmin, request, queryset):
     selected_int = queryset.values_list('id', flat=True)
     selected = []

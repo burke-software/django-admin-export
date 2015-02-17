@@ -4,10 +4,12 @@ from django.views.generic import TemplateView
 from report_utils.mixins import GetFieldsMixin, DataExportMixin
 from report_utils.model_introspection import get_relation_fields_from_model
 
+
 class AdminExport(GetFieldsMixin, DataExportMixin, TemplateView):
+
     """ Get fields from a particular model """
     template_name = 'admin_export/export_to_xls.html'
-    
+
     def get_context_data(self, **kwargs):
         context = super(AdminExport, self).get_context_data(**kwargs)
         field_name = self.request.GET.get('field', '')
@@ -35,12 +37,13 @@ class AdminExport(GetFieldsMixin, DataExportMixin, TemplateView):
             context['queryset'],
             fields,
             self.request.user,
-            )
+        )
         return self.list_to_xlsx_response(data_list, header=fields)
-    
+
+
 class AdminExportRelated(GetFieldsMixin, TemplateView):
     template_name = 'admin_export/fields.html'
-    
+
     def post(self, request, **kwargs):
         context = self.get_context_data(**kwargs)
         model_class = ContentType.objects.get(id=self.request.POST['model_ct']).model_class()
