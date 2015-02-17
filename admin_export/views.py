@@ -1,14 +1,53 @@
+from itertools import chain
+from django.contrib import admin
 from django.contrib.contenttypes.models import ContentType
+from django.http.response import HttpResponse
+from django.template import loader, Context
 from django.views.generic import TemplateView
-
+import csv
 from report_utils.mixins import GetFieldsMixin, DataExportMixin
 from report_utils.model_introspection import get_relation_fields_from_model
 
+HTML_TEMPLATE = r"""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{ title }}</title>
+</head>
+<body>
+    <h1>{{ title }}</h1>
+    <table border=1>
+    {% if header %}<thead><tr>{% for h in header %}<th>{{ h }}</th>{% endfor %}</tr></thead>{% endif %}
+    <tbody>
+        {% for datum in data %}
+        <tr>{% for cell in datum %}<td>{{ cell|linebreaksbr }}</td>{% endfor %}</tr>
+        {% endfor %}
+    </tbody>
+    </table>
+</body>
+</html>
+"""
 
-class AdminExport(GetFieldsMixin, DataExportMixin, TemplateView):
+
+class ExtDataExportMixin(DataExportMixin):
+
+    def list_to_html_response(self, data, title='', header=None):
+        html = loader.get_template_from_string(HTML_TEMPLATE).render(Context(locals()))
+        return HttpResponse(html)
+
+    def list_to_csv_response(self, data, title='', header=None):
+        resp = HttpResponse(content_type="text/csv; charset=UTF-8")
+        cw = csv.writer(resp)
+        for row in chain([header] if header else [], data):
+            cw.writerow([unicode(s).encode(resp._charset) for s in row])
+        return resp
+
+
+class AdminExport(GetFieldsMixin, ExtDataExportMixin, TemplateView):
 
     """ Get fields from a particular model """
-    template_name = 'admin_export/export_to_xls.html'
+    template_name = 'admin_export/export.html'
 
     def get_context_data(self, **kwargs):
         context = super(AdminExport, self).get_context_data(**kwargs)
@@ -42,7 +81,13 @@ class AdminExport(GetFieldsMixin, DataExportMixin, TemplateView):
             fields,
             self.request.user,
         )
-        return self.list_to_xlsx_response(data_list, header=fields)
+        format = request.POST.get("__format")
+        if format == "html":
+            return self.list_to_html_response(data_list, header=fields)
+        elif format == "csv":
+            return self.list_to_csv_response(data_list, header=fields)
+        else:
+            return self.list_to_xlsx_response(data_list, header=fields)
 
     def get(self, request, *args, **kwargs):
         if request.REQUEST.get("related"):  # Dispatch to the other view

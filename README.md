@@ -1,7 +1,9 @@
 django-admin-export
 ===================
 
-Generic export to xls action for Django admin interface. It's meant for fast and simple exports and lets you choose the data to export.
+Generic export to XLSX/HTML/CSV action for the Django admin interface.
+
+Meant for fast and simple exports and lets you choose the data to export.
 
 Features
 --------
