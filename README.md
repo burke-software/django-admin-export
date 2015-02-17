@@ -22,3 +22,10 @@ Install
 Usage
 -----
 Go to any admin page, select fields, then select the export to xls action. Then check off any fields you want to export.
+
+Running tests
+-------------
+
+1. Acquire a checkout of the repository
+2. ``pip install -e . -r test_requirements.txt``
+3. ``py.test tests``
