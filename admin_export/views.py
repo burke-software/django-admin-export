@@ -49,26 +49,35 @@ class AdminExport(GetFieldsMixin, ExtDataExportMixin, TemplateView):
     """ Get fields from a particular model """
     template_name = 'admin_export/export.html'
 
-    def get_context_data(self, **kwargs):
-        context = super(AdminExport, self).get_context_data(**kwargs)
-        field_name = self.request.GET.get('field', '')
-        model_class = ContentType.objects.get(id=self.request.GET['ct']).model_class()
-
+    def get_queryset(self, model_class):
         if self.request.GET.get("session_key"):
             ids = self.request.session[self.request.GET["session_key"]]
         else:
             ids = self.request.GET['ids'].split(',')
+        try:
+            model_admin = admin.site._registry[model_class]
+        except KeyError:
+            raise ValueError("Model %r not registered with admin" % model_class)
+        queryset = model_admin.get_queryset(self.request).filter(pk__in=ids)
+        return queryset
 
-        queryset = model_class.objects.filter(pk__in=ids)
+    def get_model_class(self):
+        model_class = ContentType.objects.get(id=self.request.GET['ct']).model_class()
+        return model_class
 
+    def get_context_data(self, **kwargs):
+        context = super(AdminExport, self).get_context_data(**kwargs)
+        field_name = self.request.GET.get('field', '')
+        model_class = self.get_model_class()
+        queryset = self.get_queryset(model_class)
         path = self.request.GET.get('path', '')
         path_verbose = self.request.GET.get('path_verbose', '')
         context['opts'] = model_class._meta
         context['queryset'] = queryset
         context['model_ct'] = self.request.GET['ct']
-        field_data = self.get_fields(model_class, field_name, path, path_verbose)
         context['related_fields'] = get_relation_fields_from_model(model_class)
-        return dict(context.items() + field_data.items())
+        context.update(self.get_fields(model_class, field_name, path, path_verbose))
+        return context
 
     def post(self, request, **kwargs):
         context = self.get_context_data(**kwargs)
