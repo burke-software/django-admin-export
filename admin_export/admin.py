@@ -1,17 +1,26 @@
+import uuid
 from django.contrib import admin
 from django.contrib.contenttypes.models import ContentType
+from django.core.urlresolvers import reverse, NoReverseMatch
 from django.http import HttpResponseRedirect
 
+
 def export_simple_selected_objects(modeladmin, request, queryset):
-    selected_int = queryset.values_list('id', flat=True)
-    selected = []
-    for s in selected_int:
-        selected.append(str(s))
+    selected = list(queryset.values_list('id', flat=True))
     ct = ContentType.objects.get_for_model(queryset.model)
-    if len(selected) > 10000:
-        request.session['selected_ids'] = selected
-        return HttpResponseRedirect("/admin_export/export_to_xls/?ct=%s&ids=IN_SESSION" % (ct.pk,))
+
+    try:
+        url = reverse("admin_export:export")
+    except NoReverseMatch:  # Old configuration, maybe? Fall back to old URL scheme.
+        url = "/admin_export/export_to_xls/"
+
+    if len(selected) > 1000:
+        session_key = "admin_export_%s" % uuid.uuid4()
+        request.session[session_key] = selected
+        return HttpResponseRedirect("%s?ct=%s&session_key=%s" % (url, ct.pk, session_key))
     else:
-        return HttpResponseRedirect("/admin_export/export_to_xls/?ct=%s&ids=%s" % (ct.pk, ",".join(selected)))
-export_simple_selected_objects.short_description = "Export selected items to XLS"
+        return HttpResponseRedirect("%s?ct=%s&ids=%s" % (url, ct.pk, ",".join(str(pk) for pk in selected)))
+
+export_simple_selected_objects.short_description = "Export selected items..."
+
 admin.site.add_action(export_simple_selected_objects)

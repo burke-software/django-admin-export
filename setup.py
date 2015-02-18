@@ -5,11 +5,11 @@ setup(
     version = "2.0",
     author = "David Burke",
     author_email = "david@burkesoftware.com",
-    description = ("Generic export to xls action for Django admin interface"),
+    description = ("Generic export action for Django admin interface"),
     license = "BSD",
     keywords = "django admin",
     url = "https://github.com/burke-software/django-admin-export",
-    packages=find_packages(),
+    packages=find_packages(exclude=("tests",)),
     include_package_data=True,
     classifiers=[
         "Development Status :: 4 - Beta",

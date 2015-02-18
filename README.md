@@ -1,7 +1,9 @@
 django-admin-export
 ===================
 
-Generic export to xls action for Django admin interface. It's meant for fast and simple exports and lets you choose the data to export.
+Generic export to XLSX/HTML/CSV action for the Django admin interface.
+
+Meant for fast and simple exports and lets you choose the data to export.
 
 Features
 --------
@@ -15,8 +17,15 @@ Install
 -------
 1. ``pip install django-admin-export``
 2. Add ``admin_export`` to INSTALLED_APPS
-3. Add ``(r'^admin_export/', include("admin_export.urls")),`` to urls.py
+3. Add ``url(r'^admin_export/', include("admin_export.urls", namespace="admin_export")),`` to your project's urls.py
 
 Usage
 -----
 Go to any admin page, select fields, then select the export to xls action. Then check off any fields you want to export.
+
+Running tests
+-------------
+
+1. Acquire a checkout of the repository
+2. ``pip install -e . -r test_requirements.txt``
+3. ``py.test tests``
