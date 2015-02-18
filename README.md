@@ -8,7 +8,7 @@ Meant for fast and simple exports and lets you choose the data to export.
 Features
 --------
 - Drop in application
-- Traverse model relations recurssively
+- Traverse model relations recursively
 
 django-admin-export is built with [django-report-utils](https://github.com/burke-software/django-report-utils).
 For a a full query builder try using [django-report-builder](https://github.com/burke-software/django-report-builder).
