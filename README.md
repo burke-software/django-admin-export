@@ -29,3 +29,8 @@ Running tests
 1. Acquire a checkout of the repository
 2. ``pip install -e . -r test_requirements.txt``
 3. ``py.test tests``
+
+Security
+--------
+
+This project assumes staff users are trusted. There may be ways for users to manipulate this project to get more data access than they should have.
