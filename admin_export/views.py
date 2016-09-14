@@ -2,7 +2,8 @@ from itertools import chain
 from django.contrib import admin
 from django.contrib.contenttypes.models import ContentType
 from django.http.response import HttpResponse
-from django.template import loader, Context
+from django.template import Context, Engine
+from django.utils.text import force_text
 from django.views.generic import TemplateView
 import csv
 from report_utils.mixins import GetFieldsMixin, DataExportMixin
@@ -33,14 +34,14 @@ HTML_TEMPLATE = r"""
 class ExtDataExportMixin(DataExportMixin):
 
     def list_to_html_response(self, data, title='', header=None):
-        html = loader.get_template_from_string(HTML_TEMPLATE).render(Context(locals()))
+        html = Engine().from_string(HTML_TEMPLATE).render(Context(locals()))
         return HttpResponse(html)
 
     def list_to_csv_response(self, data, title='', header=None):
         resp = HttpResponse(content_type="text/csv; charset=UTF-8")
         cw = csv.writer(resp)
         for row in chain([header] if header else [], data):
-            cw.writerow([unicode(s).encode(resp._charset) for s in row])
+            cw.writerow([force_text(s).encode(resp.charset) for s in row])
         return resp
 
 
@@ -99,7 +100,7 @@ class AdminExport(GetFieldsMixin, ExtDataExportMixin, TemplateView):
             return self.list_to_xlsx_response(data_list, header=fields)
 
     def get(self, request, *args, **kwargs):
-        if request.REQUEST.get("related"):  # Dispatch to the other view
+        if request.GET.get("related", request.POST.get("related")):  # Dispatch to the other view
             return AdminExportRelated.as_view()(request=self.request)
         return super(AdminExport, self).get(request, *args, **kwargs)
 

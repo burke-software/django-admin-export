@@ -3,7 +3,8 @@
 
 {% block extrahead %}
     {{ block.super }}
-    <script src="{% static "admin/js/jquery.min.js" %}"></script>
+    <script src="{% static "admin/js/vendor/jquery/jquery.min.js" %}"></script>
+    <script src="{% static "admin/js/jquery.init.js" %}"></script>
     <script type="text/javascript">
         (function ($) {
             window.show_fields = function (event, model_ct, field, path, path_verbose) {
@@ -22,7 +23,7 @@
                     $('.check_field').prop('checked', checked);
                 });
             });
-        }(jQuery));
+        }(django.jQuery));
 
     </script>
 {% endblock %}

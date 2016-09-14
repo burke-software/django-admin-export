@@ -1,4 +1,4 @@
-Hello - this project is looking for a new maintainer. Please open an issue if you'd like to help maintain. 
+Hello - this project is looking for a new maintainer. Please open an issue if you'd like to help maintain.
 
 Most pressing issue is to support modern python/django See [#6](https://github.com/burke-software/django-admin-export/issues/6)
 
@@ -34,6 +34,13 @@ Running tests
 1. Acquire a checkout of the repository
 2. ``pip install -e . -r test_requirements.txt``
 3. ``py.test tests``
+
+Or to run tests with all supported environments:
+
+1. Acquire a checkout of the repository
+2. Install tox with ``pip install tox``
+3. ``tox``
+
 
 Security
 --------
