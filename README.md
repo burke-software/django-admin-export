@@ -1,6 +1,4 @@
-Hello - this project is looking for a new maintainer. Please open an issue if you'd like to help maintain. 
-
-Most pressing issue is to support modern python/django See [#6](https://github.com/burke-software/django-admin-export/issues/6)
+This project is no longer active. Check out a fork at https://github.com/fgmacedo/django-export-action
 
 
 django-admin-export
